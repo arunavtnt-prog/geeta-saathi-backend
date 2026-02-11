@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -15,7 +15,7 @@ datasource db {
 // ============================================
 
 model User {
-  id                String            @id @default(dbgenerated()) @db.Uuid
+  id                String            @id @default(cuid())
   phone             String            @unique
   firstName         String?           @map("first_name")
   lastName          String?           @map("last_name")
@@ -42,12 +42,12 @@ model User {
 }
 
 model UserProgress {
-  id                String    @id @default(dbgenerated()) @db.Uuid
+  id                String    @id @default(cuid())
   userId            String    @unique @map("user_id")
   currentStreak     Int       @default(0) @map("current_streak")
   totalAudioSeconds Int       @default(0) @map("total_audio_seconds")
   lessonsCompleted  Int       @default(0) @map("lessons_completed")
-  chaptersCovered    String[]  @default([]) @map("chapters_covered")
+  chaptersCovered   String    @default("") @map("chapters_covered")
   lastActiveAt      DateTime  @default(now()) @map("last_active_at")
   updatedAt         DateTime  @updatedAt @default(now())
 
@@ -57,7 +57,7 @@ model UserProgress {
 }
 
 model Streak {
-  id           String    @id @default(dbgenerated()) @db.Uuid
+  id           String    @id @default(cuid())
   userId       String    @map("user_id")
   streakDate   DateTime  @map("streak_date")
   streakCount  Int       @map("streak_count")
@@ -74,9 +74,9 @@ model Streak {
 // ============================================
 
 model JournalEntry {
-  id        String   @id @default(dbgenerated()) @db.Uuid
+  id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  content   String   @db.Text
+  content   String
   mood      String?
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -90,16 +90,16 @@ model JournalEntry {
 // ============================================
 
 model AudioTrack {
-  id               String          @id @default(dbgenerated()) @db.Uuid
-  title            String          @db.VarChar(255)
-  category          String          @map("category")
+  id               String          @id @default(cuid())
+  title            String
+  category         String
   durationSeconds  Int             @map("duration_seconds")
-  language         String          @db.VarChar(10)
-  mood              String?
-  narrator         String?         @db.VarChar(100)
+  language         String
+  mood             String?
+  narrator         String?
   fileUrl          String          @map("file_url")
-  thumbnailUrl      String?         @map("thumbnail_url")
-  verses           Json?
+  thumbnailUrl     String?         @map("thumbnail_url")
+  verses           String?
   isPremium        Boolean         @default(false) @map("is_premium")
   playbackCount    Int             @default(0) @map("playback_count")
   createdAt        DateTime        @default(now()) @map("created_at")
@@ -112,22 +112,22 @@ model AudioTrack {
 }
 
 model UserAudioProgress {
-  id             String    @id @default(dbgenerated()) @db.Uuid
-  userId         String    @map("user_id")
-  trackId        String    @map("track_id")
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  trackId         String    @map("track_id")
   positionSeconds Int       @default(0) @map("position_seconds")
-  completed      Boolean   @default(false)
-  lastPlayedAt   DateTime  @default(now()) @map("last_played_at")
+  completed       Boolean   @default(false)
+  lastPlayedAt    DateTime  @default(now()) @map("last_played_at")
 
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  track          AudioTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track           AudioTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@unique([userId, trackId])
   @@map("user_audio_progress")
 }
 
 model Bookmark {
-  id        String   @id @default(dbgenerated()) @db.Uuid
+  id        String   @id @default(cuid())
   userId    String   @map("user_id")
   trackId   String   @map("track_id")
   createdAt DateTime @default(now()) @map("created_at")
@@ -144,13 +144,13 @@ model Bookmark {
 // ============================================
 
 model Verse {
-  id                String   @id @default(dbgenerated()) @db.Uuid
+  id                String   @id @default(cuid())
   chapter           Int
   verseNumber       Int      @map("verse_number")
-  sanskrit          String   @db.Text
+  sanskrit          String
   hindiTranslation  String?  @map("hindi_translation")
   englishTranslation String   @map("english_translation")
-  explanation       String?  @db.Text
+  explanation       String?
   audioUrl          String?  @map("audio_url")
   createdAt         DateTime @default(now()) @map("created_at")
 
@@ -161,7 +161,7 @@ model Verse {
 }
 
 model DailyVerse {
-  id            String   @id @default(dbgenerated()) @db.Uuid
+  id            String   @id @default(cuid())
   verseId       String   @map("verse_id")
   scheduledDate DateTime @unique @map("scheduled_date")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -176,24 +176,24 @@ model DailyVerse {
 // ============================================
 
 model Lesson {
-  id            String    @id @default(dbgenerated()) @db.Uuid
-  title         String    @db.VarChar(255)
-  preview       String?   @db.Text
-  content       String    @db.Text
+  id             String    @id @default(cuid())
+  title          String
+  preview        String?
+  content        String
   durationSeconds Int?     @map("duration_seconds")
-  category      String    @db.VarChar(50)
-  difficulty    String?   @db.VarChar(20)
-  sequence      Int?
-  createdAt     DateTime  @default(now()) @map("created_at")
+  category       String
+  difficulty     String?
+  sequence       Int?
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   // Relations
-  userLessons   UserLesson[]
+  userLessons    UserLesson[]
 
   @@map("lessons")
 }
 
 model UserLesson {
-  id          String    @id @default(dbgenerated()) @db.Uuid
+  id          String    @id @default(cuid())
   userId      String    @map("user_id")
   lessonId    String    @map("lesson_id")
   completed   Boolean   @default(false)
@@ -211,16 +211,16 @@ model UserLesson {
 // ============================================
 
 model Temple {
-  id          String   @id @default(dbgenerated()) @db.Uuid
-  name        String   @db.VarChar(255)
+  id          String   @id @default(cuid())
+  name        String
   nameHi      String?  @map("name_hi")
-  location    String   @db.VarChar(255)
+  location    String
   streamUrl   String?  @map("stream_url")
-  thumbnailUrl String?  @map("thumbnail_url")
-  description String? @db.Text
+  thumbnailUrl String? @map("thumbnail_url")
+  description String?
   isLive      Boolean  @default(false) @map("is_live")
-  latitude    Decimal? @db.Decimal(10, 8)
-  longitude   Decimal? @db.Decimal(11, 8)
+  latitude    Float?
+  longitude   Float?
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("temples")
@@ -231,10 +231,10 @@ model Temple {
 // ============================================
 
 model AIConversation {
-  id               String   @id @default(dbgenerated()) @db.Uuid
+  id               String   @id @default(cuid())
   userId           String   @map("user_id")
-  question         String   @db.Text
-  answer           String   @db.Text
+  question         String
+  answer           String
   verseReference   String?  @map("verse_reference")
   actionableStep   String?  @map("actionable_step")
   relatedTrackId   String?  @map("related_track_id")
@@ -250,10 +250,10 @@ model AIConversation {
 // ============================================
 
 model Feedback {
-  id           String   @id @default(dbgenerated()) @db.Uuid
+  id           String   @id @default(cuid())
   userId       String?  @map("user_id")
-  category     String   @db.VarChar(50)
-  content      String   @db.Text
+  category     String
+  content      String
   screenshotUrl String?  @map("screenshot_url")
   createdAt    DateTime @default(now()) @map("created_at")
 
@@ -267,12 +267,12 @@ model Feedback {
 // ============================================
 
 model Notification {
-  id           String      @id @default(dbgenerated()) @db.Uuid
+  id           String      @id @default(cuid())
   userId       String      @map("user_id")
-  type         String      @db.VarChar(50)
-  title        String      @db.VarChar(255)
-  body         String      @db.Text
-  data         Json?
+  type         String
+  title        String
+  body         String
+  data         String?
   read         Boolean     @default(false)
   createdAt    DateTime    @default(now()) @map("created_at")
   scheduledFor DateTime?   @map("scheduled_for")

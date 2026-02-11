@@ -8,7 +8,7 @@ REST API for Geeta Saathi - Bhagavad Gita learning platform.
 - **Framework**: Express.js
 - **Language**: TypeScript
 - **ORM**: Prisma
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL (production), SQLite (local development)
 - **Cache**: Redis
 - **Auth**: Supabase Auth (Phone OTP)
 
@@ -17,8 +17,16 @@ REST API for Geeta Saathi - Bhagavad Gita learning platform.
 ### Prerequisites
 
 - Node.js 18+
+
+**For local development:**
+- SQLite (included with Prisma, no installation needed)
+
+**For production:**
 - PostgreSQL 14+
 - Redis 6+
+- Supabase account
+- OpenAI API key
+- Twilio account (for SMS)
 
 ### Installation
 
@@ -29,6 +37,9 @@ npm install
 # Set up environment variables
 cp .env.example .env
 # Edit .env with your credentials
+
+# For local development (SQLite), use:
+DATABASE_URL="file:./dev.db"
 
 # Generate Prisma client
 npm run db:generate
@@ -43,6 +54,8 @@ npm run db:seed
 npm run dev
 ```
 
+The server will start on `http://localhost:3002` (or your configured PORT).
+
 ### Environment Variables
 
 See `.env.example` for all required variables.
@@ -50,7 +63,7 @@ See `.env.example` for all required variables.
 ## API Documentation
 
 ### Base URL
-- Development: `http://localhost:3001`
+- Development: `http://localhost:3002`
 - Production: `https://api.geetasaathi.com`
 
 ### Endpoints
