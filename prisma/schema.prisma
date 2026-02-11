@@ -1,0 +1,283 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USERS & AUTH
+// ============================================
+
+model User {
+  id                String            @id @default(dbgenerated()) @db.Uuid
+  phone             String            @unique
+  firstName         String?           @map("first_name")
+  lastName          String?           @map("last_name")
+  language          String            @default("en")
+  experienceLevel   String?           @map("experience_level")
+  goal              String?
+  dailyTimeMinutes  Int               @default(15) @map("daily_time_minutes")
+  fcmToken          String?           @map("fcm_token")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @default(now())
+
+  // Relations
+  progress          UserProgress?
+  streaks           Streak[]
+  journalEntries    JournalEntry[]
+  audioProgress     UserAudioProgress[]
+  bookmarks         Bookmark[]
+  userLessons       UserLesson[]
+  conversations     AIConversation[]
+  feedback          Feedback[]
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model UserProgress {
+  id                String    @id @default(dbgenerated()) @db.Uuid
+  userId            String    @unique @map("user_id")
+  currentStreak     Int       @default(0) @map("current_streak")
+  totalAudioSeconds Int       @default(0) @map("total_audio_seconds")
+  lessonsCompleted  Int       @default(0) @map("lessons_completed")
+  chaptersCovered    String[]  @default([]) @map("chapters_covered")
+  lastActiveAt      DateTime  @default(now()) @map("last_active_at")
+  updatedAt         DateTime  @updatedAt @default(now())
+
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_progress")
+}
+
+model Streak {
+  id           String    @id @default(dbgenerated()) @db.Uuid
+  userId       String    @map("user_id")
+  streakDate   DateTime  @map("streak_date")
+  streakCount  Int       @map("streak_count")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, streakDate])
+  @@map("streaks")
+}
+
+// ============================================
+// JOURNAL
+// ============================================
+
+model JournalEntry {
+  id        String   @id @default(dbgenerated()) @db.Uuid
+  userId    String   @map("user_id")
+  content   String   @db.Text
+  mood      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("journal_entries")
+}
+
+// ============================================
+// AUDIO
+// ============================================
+
+model AudioTrack {
+  id               String          @id @default(dbgenerated()) @db.Uuid
+  title            String          @db.VarChar(255)
+  category          String          @map("category")
+  durationSeconds  Int             @map("duration_seconds")
+  language         String          @db.VarChar(10)
+  mood              String?
+  narrator         String?         @db.VarChar(100)
+  fileUrl          String          @map("file_url")
+  thumbnailUrl      String?         @map("thumbnail_url")
+  verses           Json?
+  isPremium        Boolean         @default(false) @map("is_premium")
+  playbackCount    Int             @default(0) @map("playback_count")
+  createdAt        DateTime        @default(now()) @map("created_at")
+
+  // Relations
+  progress         UserAudioProgress[]
+  bookmarks        Bookmark[]
+
+  @@map("audio_tracks")
+}
+
+model UserAudioProgress {
+  id             String    @id @default(dbgenerated()) @db.Uuid
+  userId         String    @map("user_id")
+  trackId        String    @map("track_id")
+  positionSeconds Int       @default(0) @map("position_seconds")
+  completed      Boolean   @default(false)
+  lastPlayedAt   DateTime  @default(now()) @map("last_played_at")
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track          AudioTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trackId])
+  @@map("user_audio_progress")
+}
+
+model Bookmark {
+  id        String   @id @default(dbgenerated()) @db.Uuid
+  userId    String   @map("user_id")
+  trackId   String   @map("track_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  track     AudioTrack @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trackId])
+  @@map("bookmarks")
+}
+
+// ============================================
+// VERSES
+// ============================================
+
+model Verse {
+  id                String   @id @default(dbgenerated()) @db.Uuid
+  chapter           Int
+  verseNumber       Int      @map("verse_number")
+  sanskrit          String   @db.Text
+  hindiTranslation  String?  @map("hindi_translation")
+  englishTranslation String   @map("english_translation")
+  explanation       String?  @db.Text
+  audioUrl          String?  @map("audio_url")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  dailyVerses       DailyVerse[]
+
+  @@unique([chapter, verseNumber])
+  @@map("verses")
+}
+
+model DailyVerse {
+  id            String   @id @default(dbgenerated()) @db.Uuid
+  verseId       String   @map("verse_id")
+  scheduledDate DateTime @unique @map("scheduled_date")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  verse         Verse    @relation(fields: [verseId], references: [id])
+
+  @@map("daily_verses")
+}
+
+// ============================================
+// LESSONS
+// ============================================
+
+model Lesson {
+  id            String    @id @default(dbgenerated()) @db.Uuid
+  title         String    @db.VarChar(255)
+  preview       String?   @db.Text
+  content       String    @db.Text
+  durationSeconds Int?     @map("duration_seconds")
+  category      String    @db.VarChar(50)
+  difficulty    String?   @db.VarChar(20)
+  sequence      Int?
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  userLessons   UserLesson[]
+
+  @@map("lessons")
+}
+
+model UserLesson {
+  id          String    @id @default(dbgenerated()) @db.Uuid
+  userId      String    @map("user_id")
+  lessonId    String    @map("lesson_id")
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at")
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson      Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("user_lessons")
+}
+
+// ============================================
+// TEMPLES
+// ============================================
+
+model Temple {
+  id          String   @id @default(dbgenerated()) @db.Uuid
+  name        String   @db.VarChar(255)
+  nameHi      String?  @map("name_hi")
+  location    String   @db.VarChar(255)
+  streamUrl   String?  @map("stream_url")
+  thumbnailUrl String?  @map("thumbnail_url")
+  description String? @db.Text
+  isLive      Boolean  @default(false) @map("is_live")
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("temples")
+}
+
+// ============================================
+// AI GUIDE
+// ============================================
+
+model AIConversation {
+  id               String   @id @default(dbgenerated()) @db.Uuid
+  userId           String   @map("user_id")
+  question         String   @db.Text
+  answer           String   @db.Text
+  verseReference   String?  @map("verse_reference")
+  actionableStep   String?  @map("actionable_step")
+  relatedTrackId   String?  @map("related_track_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_conversations")
+}
+
+// ============================================
+// FEEDBACK
+// ============================================
+
+model Feedback {
+  id           String   @id @default(dbgenerated()) @db.Uuid
+  userId       String?  @map("user_id")
+  category     String   @db.VarChar(50)
+  content      String   @db.Text
+  screenshotUrl String?  @map("screenshot_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("feedback")
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id           String      @id @default(dbgenerated()) @db.Uuid
+  userId       String      @map("user_id")
+  type         String      @db.VarChar(50)
+  title        String      @db.VarChar(255)
+  body         String      @db.Text
+  data         Json?
+  read         Boolean     @default(false)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  scheduledFor DateTime?   @map("scheduled_for")
+
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
